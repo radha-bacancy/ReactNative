@@ -1,0 +1,168 @@
+import React, { Component } from 'react';
+import { TextInput, TouchableOpacity, Text, View } from 'react-native';
+import { createStore, combineReducers } from 'redux';
+
+const todo = ( state, action ) => {
+    switch ( action.type ) {
+        case 'addTodo':
+            return {
+                key: action.key,
+                text: action.text,
+                completed: false,
+            };
+        case 'toggleTodo':
+            if(state.key !== action.key){
+                return state;
+            }
+            else{
+                return {
+                    ...state,
+                    completed: !state.completed
+                };
+            }
+        default:
+            return state;
+    }
+};
+
+const todos = ( state = [], action ) => {
+    switch ( action.type ) {
+        case 'addTodo':
+            return [
+                ...state,
+                todo(undefined, action)
+            ];
+        case 'toggleTodo':
+            return state.map( t => todo(t, action));
+        default:
+            return state;
+    }
+};
+
+const visibilityFilter = ( state = 'showAll', action ) => {
+    switch (action.type) {
+        case 'setVisibilityFilter':
+            return action.filter;
+        default:
+            return state;
+    }
+};
+
+const todoApp = combineReducers({
+    todos,
+    visibilityFilter
+});
+
+let store = createStore(todoApp);
+
+class App extends Component {
+    constructor(props){
+        super(props);
+        this.state={
+            str: [],
+            arr: [],
+            nme: ''
+        }
+    }
+
+    _enterTodo = (a) => {
+        this.setState({
+            nme: a,
+        })
+    };
+
+    _showData = async () => {
+        await store.dispatch({type: 'addTodo', key: this.state.arr.length, text: this.state.nme});
+        this.state.arr.push('a');
+        this.enterTodo.setNativeProps({text:''});
+    };
+
+    _toggleTodo = async (txt) => {
+        await store.dispatch({type: 'toggleTodo', key: txt.key});
+    };
+
+    _filterTodo = (todos, filter) => {
+        switch(filter) {
+            case 'All' :
+                return todos;
+            case 'Active':
+                return todos.filter( t => (t.completed !== true));
+            case 'Completed':
+                return todos.filter( t => t.completed)
+        }
+    };
+
+    _refresh = () => {
+        this.setState({
+            str: store.getState()
+        });
+    };
+
+    _go=(filter)=>{
+        store.dispatch({type: 'visibilityFilter', filter: filter})
+    };
+
+    render(){
+        store.subscribe(this._refresh);
+        let visibleTodos = (this.state.str.todos === undefined) ? undefined : this._filterTodo(
+            this.state.str.todos,
+            this.state.str.visibilityFilter
+        );
+
+        return(
+            <View style={{padding: 20, backgroundColor: '#fff', flex: 1}}>
+
+                <View>
+                    <TextInput
+                        placeholder={'Enter todo'}
+                        ref={component => this.enterTodo = component}
+                        onChangeText={(a) => this._enterTodo(a)}
+                    />
+                    <TouchableOpacity
+                        onPress={this._showData}
+                        style={{
+                            borderRadius: 3,
+                            borderColor: '#000',
+                            alignItems: 'center',
+                            borderWidth: .5,
+                            width: 100,
+                            backgroundColor: '#ddd'
+                        }}
+                    >
+                        <Text>Add Todos</Text>
+                    </TouchableOpacity>
+                </View>
+
+                <View style={{padding: 10, paddingTop: 10, borderWidth: .5}}>
+                    {
+                        (visibleTodos === undefined) ? undefined : visibleTodos.map((td) => {
+                            console.log(visibleTodos);
+                            return(
+                                <View style={{flexDirection: 'row'}}>
+                                    <Text>{td.key + 1}.</Text>
+                                    <Text
+                                        onPress={() => this._toggleTodo(td)}
+                                        style={{textDecorationLine: (td.completed === true)
+                                                ? 'line-through'
+                                                : 'none'
+                                        }}
+                                    >
+                                         {td.text}
+                                    </Text>
+                                </View>
+                            );
+                        })
+                    }
+                </View>
+
+                <View style={{flexDirection: 'row'}}>
+                    <TouchableOpacity onPress={() => this._go('All')}><Text> All </Text></TouchableOpacity>
+                    <TouchableOpacity onPress={() => this._go('Active')}><Text> Active </Text></TouchableOpacity>
+                    <TouchableOpacity onPress={() => this._go('Completed')}><Text> Completed </Text></TouchableOpacity>
+                </View>
+            </View>
+        );
+    }
+}
+
+export default App;
